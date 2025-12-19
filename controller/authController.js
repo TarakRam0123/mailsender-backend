@@ -74,6 +74,13 @@ const loginUser = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "1d" }
     );
+    res.cookie("token", token, {
+      httpOnly: true, // 🔥 cannot be accessed by JS
+      secure: false, // true in production (HTTPS)
+      sameSite: "lax", // IMPORTANT for OAuth redirect
+      path: "/",
+      maxAge: 24 * 60 * 60 * 1000,
+    });
     return res
       .status(200)
       .json({ message: "login success", status: true, token });
@@ -82,4 +89,35 @@ const loginUser = async (req, res) => {
   }
 };
 
-module.exports = { registerUser, loginUser };
+const logout = async (req, res) => {
+  try {
+    res.clearCookie("token", {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: false,
+      path: "/",
+    });
+    res.json({ message: "Logged out" });
+  } catch (error) {
+    return res.status(500).json({ message: error.message, status: false });
+  }
+};
+
+const getUserDetails = async (req, res) => {
+  try {
+    const userDetails = await User.findById(req.userid);
+    if (!userDetails) {
+      return res.status(401).json({ message: "user not found", status: false });
+    }
+
+    return res.status(200).json({
+      message: "User retrived successfully",
+      status: true,
+      userDetails: userDetails.name,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message, status: false });
+  }
+};
+
+module.exports = { registerUser, loginUser, logout, getUserDetails };

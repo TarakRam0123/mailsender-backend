@@ -1,25 +1,53 @@
 const mongoose = require("mongoose");
 
-const userSchema = new mongoose.Schema(
+const ProviderSchema = new mongoose.Schema(
   {
-    name: {
+    provider: {
+      type: String, // google | microsoft | zoho
+      required: true,
+    },
+    email: {
       type: String,
       required: true,
-      trim: true,
     },
+    providerId: {
+      type: String,
+    },
+    accessToken: {
+      type: String,
+      required: true,
+    },
+    refreshToken: {
+      type: String,
+    },
+    scope: String,
+    tokenType: {
+      type: String,
+      default: "Bearer",
+    },
+    expiresAt: {
+      type: Date,
+    },
+  },
+  { _id: false }
+);
+
+const UserSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true },
     email: {
       type: String,
       unique: true,
       required: true,
-      trim: true,
+      lowercase: true,
     },
-    password: {
-      type: String,
-      required: true,
-      minlength: 6,
+    password: String,
+    providers: {
+      type: [ProviderSchema],
+      default: [],
     },
   },
   { timestamps: true }
 );
 
-module.exports = mongoose.model("user", userSchema);
+module.exports = mongoose.model("User", UserSchema);
