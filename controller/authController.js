@@ -76,7 +76,7 @@ const loginUser = async (req, res) => {
     );
     res.cookie("token", token, {
       httpOnly: true, // 🔥 cannot be accessed by JS
-      secure: false, // true in production (HTTPS)
+      secure: true, // true in production (HTTPS)
       sameSite: "lax", // IMPORTANT for OAuth redirect
       path: "/",
       maxAge: 24 * 60 * 60 * 1000,

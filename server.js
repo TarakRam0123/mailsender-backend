@@ -14,11 +14,10 @@ app.use(cors({ origin: process.env.FRONT_END, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+connect();
 app.use("/api/auth", authRoutes);
 app.use("/", googleRoutes);
 app.use("/mail", mailRouter);
-
-connect();
 
 app.get("/test", (req, res) => {
   res.send("Server OK");
