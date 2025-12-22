@@ -22,6 +22,29 @@ const saveDraft = async (req, res) => {
     return res.status(200).json({
       status: true,
       message: "Draft saved successfully",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: false,
+      message: error.message,
+    });
+  }
+};
+const getDraft = async (req, res) => {
+  try {
+    const draft = await MailDraft.findOne({ user: req.userid });
+
+    if (!draft) {
+      return res.status(200).json({
+        status: true,
+        draft: null,
+        message: "No draft found",
+      });
+    }
+
+    return res.status(200).json({
+      status: true,
+      message: "Draft retrieved successfully",
       draft,
     });
   } catch (error) {
@@ -59,7 +82,7 @@ const getPreviousMails = async (req, res) => {
   }
 };
 
-module.exports = { saveDraft, getPreviousMails };
+module.exports = { saveDraft, getPreviousMails, getDraft };
 
 const sendDraftMail = async (req, res) => {
   try {
