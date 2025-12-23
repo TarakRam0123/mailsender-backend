@@ -84,7 +84,7 @@ exports.checkGoogleConnection = async (req, res) => {
 
 // 4️⃣ Send Gmail (PER USER)
 exports.sendGoogleMail = async (req, res) => {
-  const { to, subject, body } = req.body;
+  const { to } = req.body;
 
   const user = await User.findById(req.userid);
   const google = user?.providers.find((p) => p.provider === "google");
