@@ -8,7 +8,7 @@ const {
   checkGoogleConnection,
   sendGoogleMail,
 } = require("../controller/googleController");
-const { default: upload } = require("../middleware/uploadMiddleware");
+const upload = require("../middleware/uploadMiddleware");
 
 router.get("/auth/google", verifyToken, connectGoogle);
 router.get("/auth/google/callback", googleCallback);
