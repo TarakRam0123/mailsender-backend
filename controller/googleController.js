@@ -187,6 +187,17 @@ exports.sendGoogleMail = async (req, res) => {
         },
       }
     );
+    await MailDraft.updateOne(
+      { _id: draft._id },
+      {
+        $push: {
+          previousTo: {
+            email: to,
+            sentAt: new Date(),
+          },
+        },
+      }
+    );
 
     return res.json({
       message: "Email sent via Gmail!",
