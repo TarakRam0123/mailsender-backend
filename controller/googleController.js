@@ -1,6 +1,7 @@
 const axios = require("axios");
 const qs = require("querystring");
 const User = require("../model/usermodel");
+const MailDraft = require("../model/mailmodel");
 const refreshGoogleToken = require("../utils/refreshGoogleToken");
 
 const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
@@ -84,51 +85,69 @@ exports.checkGoogleConnection = async (req, res) => {
 
 // 4️⃣ Send Gmail (PER USER)
 exports.sendGoogleMail = async (req, res) => {
-  const { to } = req.body;
+  try {
+    const { to } = req.body;
+    if (!to) {
+      return res.status(400).json({
+        message: "Recipient email is required",
+        status: false,
+      });
+    }
+    const user = await User.findById(req.userid);
+    const google = user?.providers.find((p) => p.provider === "google");
 
-  const user = await User.findById(req.userid);
-  const google = user?.providers.find((p) => p.provider === "google");
+    if (!google) {
+      return res.status(400).json({ message: "Gmail not connected" });
+    }
+    // 🔁 AUTO REFRESH if expired
+    if (google.expiresAt && google.expiresAt < new Date()) {
+      if (!google.refreshToken) {
+        return res.status(401).json({ message: "Re-connect Gmail required" });
+      }
 
-  if (!google) {
-    return res.status(400).json({ message: "Gmail not connected" });
-  }
-  // 🔁 AUTO REFRESH if expired
-  if (google.expiresAt && google.expiresAt < new Date()) {
-    if (!google.refreshToken) {
-      return res.status(401).json({ message: "Re-connect Gmail required" });
+      const refreshed = await refreshGoogleToken(google.refreshToken);
+
+      google.accessToken = refreshed.accessToken;
+      google.expiresAt = refreshed.expiresAt;
+
+      await user.save();
     }
 
-    const refreshed = await refreshGoogleToken(google.refreshToken);
-
-    google.accessToken = refreshed.accessToken;
-    google.expiresAt = refreshed.expiresAt;
-
-    await user.save();
-  }
-
-  const raw = [
-    `To: ${to}`,
-    `Subject: ${subject}`,
-    "Content-Type: text/html; charset=utf-8",
-    "",
-    body,
-  ].join("\r\n");
-
-  const encoded = Buffer.from(raw)
-    .toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-
-  await axios.post(
-    "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
-    { raw: encoded },
-    {
-      headers: {
-        Authorization: `Bearer ${google.accessToken}`,
-      },
+    const draft = await MailDraft.findOne({ user: req.userid });
+    if (!draft) {
+      return res.status(400).json({
+        message: "No draft found to send",
+        status: false,
+      });
     }
-  );
+    const raw = [
+      `To: ${to}`,
+      `Subject: ${draft.subject}`,
+      "Content-Type: text/html; charset=utf-8",
+      "",
+      draft.body,
+    ].join("\r\n");
 
-  res.json({ message: "Email sent via Gmail!" });
+    const encoded = Buffer.from(raw)
+      .toString("base64")
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+
+    await axios.post(
+      "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+      { raw: encoded },
+      {
+        headers: {
+          Authorization: `Bearer ${google.accessToken}`,
+        },
+      }
+    );
+
+    res.json({ message: "Email sent via Gmail!", status: true });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: error.message || error.response?.data, status: false });
+  }
 };
