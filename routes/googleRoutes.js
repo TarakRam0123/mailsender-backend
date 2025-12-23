@@ -8,10 +8,11 @@ const {
   checkGoogleConnection,
   sendGoogleMail,
 } = require("../controller/googleController");
+const { default: upload } = require("../middleware/uploadMiddleware");
 
 router.get("/auth/google", verifyToken, connectGoogle);
 router.get("/auth/google/callback", googleCallback);
 router.get("/me/google", verifyToken, checkGoogleConnection);
-router.post("/send/google", verifyToken, sendGoogleMail);
+router.post("/send/google", verifyToken, upload.array("files"), sendGoogleMail);
 
 module.exports = router;

@@ -87,30 +87,45 @@ exports.checkGoogleConnection = async (req, res) => {
 exports.sendGoogleMail = async (req, res) => {
   try {
     const { to } = req.body;
+    const files = req.files; // ✅ CORRECT
+
     if (!to) {
       return res.status(400).json({
         message: "Recipient email is required",
         status: false,
       });
     }
+
     const user = await User.findById(req.userid);
     const google = user?.providers.find((p) => p.provider === "google");
 
     if (!google) {
-      return res.status(400).json({ message: "Gmail not connected" });
+      return res.status(400).json({
+        message: "Gmail not connected",
+        status: false,
+      });
     }
-    // 🔁 AUTO REFRESH if expired
+
+    // 🔁 Refresh token if expired
     if (google.expiresAt && google.expiresAt < new Date()) {
       if (!google.refreshToken) {
-        return res.status(401).json({ message: "Re-connect Gmail required" });
+        return res.status(401).json({
+          message: "Reconnect Gmail required",
+          status: false,
+        });
       }
 
-      const refreshed = await refreshGoogleToken(google.refreshToken);
-
-      google.accessToken = refreshed.accessToken;
-      google.expiresAt = refreshed.expiresAt;
-
-      await user.save();
+      try {
+        const refreshed = await refreshGoogleToken(google.refreshToken);
+        google.accessToken = refreshed.accessToken;
+        google.expiresAt = refreshed.expiresAt;
+        await user.save();
+      } catch {
+        return res.status(401).json({
+          message: "Gmail session expired. Please reconnect.",
+          status: false,
+        });
+      }
     }
 
     const draft = await MailDraft.findOne({ user: req.userid });
@@ -120,23 +135,52 @@ exports.sendGoogleMail = async (req, res) => {
         status: false,
       });
     }
-    const raw = [
+
+    // ---------- BUILD MIME MESSAGE ----------
+    const boundary = "----=_Part_" + Date.now();
+
+    let rawLines = [
+      `From: ${user.email}`,
       `To: ${to}`,
       `Subject: ${draft.subject}`,
+      "MIME-Version: 1.0",
+      `Content-Type: multipart/mixed; boundary="${boundary}"`,
+      "",
+      `--${boundary}`,
       "Content-Type: text/html; charset=utf-8",
       "",
       draft.body,
-    ].join("\r\n");
+    ];
 
-    const encoded = Buffer.from(raw)
+    // ---------- ATTACHMENTS ----------
+    if (files && files.length > 0) {
+      for (const file of files) {
+        rawLines.push(
+          "",
+          `--${boundary}`,
+          `Content-Type: ${file.mimetype}`,
+          "Content-Transfer-Encoding: base64",
+          `Content-Disposition: attachment; filename="${file.originalname}"`,
+          "",
+          file.buffer.toString("base64")
+        );
+      }
+    }
+
+    rawLines.push(`--${boundary}--`);
+
+    const rawMessage = rawLines.join("\r\n");
+
+    const encodedMessage = Buffer.from(rawMessage)
       .toString("base64")
       .replace(/\+/g, "-")
       .replace(/\//g, "_")
       .replace(/=+$/, "");
 
+    // ---------- SEND MAIL ----------
     await axios.post(
       "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
-      { raw: encoded },
+      { raw: encodedMessage },
       {
         headers: {
           Authorization: `Bearer ${google.accessToken}`,
@@ -144,10 +188,14 @@ exports.sendGoogleMail = async (req, res) => {
       }
     );
 
-    res.json({ message: "Email sent via Gmail!", status: true });
+    return res.json({
+      message: "Email sent via Gmail!",
+      status: true,
+    });
   } catch (error) {
-    return res
-      .status(500)
-      .json({ message: error.message || error.response?.data, status: false });
+    return res.status(500).json({
+      message: "Failed to send email",
+      status: false,
+    });
   }
 };
