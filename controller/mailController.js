@@ -3,7 +3,6 @@ const MailDraft = require("../model/mailmodel");
 const saveDraft = async (req, res) => {
   try {
     const { subject, body, attachments } = req.body;
-
     const draft = await MailDraft.findOneAndUpdate(
       { user: req.userid }, // 🔐 one draft per user
       {

@@ -51,6 +51,7 @@ exports.googleCallback = async (req, res) => {
     const user = await User.findById(userid);
     if (!user) return res.status(404).send("User not found");
 
+    const existingGoogle = user.providers.find((p) => p.provider === "google");
     // Remove old Google provider if exists
     user.providers = user.providers.filter((p) => p.provider !== "google");
 
@@ -60,7 +61,7 @@ exports.googleCallback = async (req, res) => {
       email: user.email,
       providerId: "google-oauth",
       accessToken: data.access_token,
-      refreshToken: data.refresh_token,
+      refreshToken: data.refresh_token || existingGoogle?.refreshToken,
       scope: data.scope,
       tokenType: data.token_type,
       expiresAt: new Date(Date.now() + data.expires_in * 1000),
@@ -87,8 +88,7 @@ exports.checkGoogleConnection = async (req, res) => {
 exports.sendGoogleMail = async (req, res) => {
   try {
     const { to } = req.body;
-    const files = req.files; // ✅ CORRECT
-
+    const files = req.files;
     if (!to) {
       return res.status(400).json({
         message: "Recipient email is required",
@@ -120,7 +120,11 @@ exports.sendGoogleMail = async (req, res) => {
         google.accessToken = refreshed.accessToken;
         google.expiresAt = refreshed.expiresAt;
         await user.save();
-      } catch {
+      } catch (err) {
+        console.error(
+          "Refresh token failed:",
+          err.response?.data || err.message
+        );
         return res.status(401).json({
           message: "Gmail session expired. Please reconnect.",
           status: false,
@@ -187,6 +191,7 @@ exports.sendGoogleMail = async (req, res) => {
         },
       }
     );
+
     await MailDraft.updateOne(
       { _id: draft._id },
       {
@@ -204,6 +209,7 @@ exports.sendGoogleMail = async (req, res) => {
       status: true,
     });
   } catch (error) {
+    console.error("Send mail failed:", error.response?.data || error.message);
     return res.status(500).json({
       message: "Failed to send email",
       status: false,
