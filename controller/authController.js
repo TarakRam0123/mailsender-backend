@@ -105,19 +105,73 @@ const logout = async (req, res) => {
 
 const getUserDetails = async (req, res) => {
   try {
-    const userDetails = await User.findById(req.userid);
+    const userDetails = await User.findById(req.userid).select("-password");
+
     if (!userDetails) {
-      return res.status(401).json({ message: "user not found", status: false });
+      return res.status(401).json({
+        message: "User not found",
+        status: false,
+      });
     }
 
     return res.status(200).json({
-      message: "User retrived successfully",
+      message: "User retrieved successfully",
       status: true,
-      userDetails: userDetails.name,
+      userDetails,
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message, status: false });
+    return res.status(500).json({
+      message: error.message,
+      status: false,
+    });
+  }
+};
+const updateUserDetails = async (req, res) => {
+  try {
+    const { name, mobile, bio } = req.body;
+
+    if (!name || !mobile || !bio) {
+      return res.status(400).json({
+        message: "Nothing to update",
+        status: false,
+      });
+    }
+
+    const result = await User.findByIdAndUpdate(
+      req.userid,
+      {
+        ...(name && { name }),
+        ...(mobile && { mobile }),
+        ...(bio && { bio }),
+      },
+      {
+        runValidators: true,
+      }
+    );
+
+    if (!result) {
+      return res.status(404).json({
+        message: "User not found",
+        status: false,
+      });
+    }
+
+    return res.status(200).json({
+      message: "Details updated successfully",
+      status: true,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: error.message,
+      status: false,
+    });
   }
 };
 
-module.exports = { registerUser, loginUser, logout, getUserDetails };
+module.exports = {
+  registerUser,
+  loginUser,
+  logout,
+  getUserDetails,
+  updateUserDetails,
+};
