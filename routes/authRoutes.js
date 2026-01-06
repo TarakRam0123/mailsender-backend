@@ -13,5 +13,5 @@ router.post("/register", registerUser);
 router.post("/login", loginUser);
 router.post("/logout", logout);
 router.get("/getUser", verifyToken, getUserDetails);
-router.put("/updateUser", verifyToken, updateUserDetails);
+router.post("/updateUser", verifyToken, updateUserDetails);
 module.exports = router;
