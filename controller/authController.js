@@ -130,7 +130,7 @@ const updateUserDetails = async (req, res) => {
   try {
     const { name, mobile, bio } = req.body;
 
-    if (!name || !mobile || !bio) {
+    if (!name && !mobile && !bio) {
       return res.status(400).json({
         message: "Nothing to update",
         status: false,
