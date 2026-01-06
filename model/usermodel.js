@@ -46,6 +46,8 @@ const UserSchema = new mongoose.Schema(
       type: [ProviderSchema],
       default: [],
     },
+    mobile: { type: Number },
+    bio: { type: String },
   },
   { timestamps: true }
 );
