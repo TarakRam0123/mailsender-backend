@@ -167,6 +167,39 @@ const updateUserDetails = async (req, res) => {
     });
   }
 };
+const changePassword = async (req, res) => {
+  try {
+    const { newPassword } = req.body;
+    if (!newPassword) {
+      return res
+        .status(400)
+        .json({ message: "New password required", status: false });
+    }
+    const user = await User.findById(req.userid);
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+        status: false,
+      });
+    }
+
+    const isSamePassword = await bcrypt.compare(newPassword, user.password);
+    if (isSamePassword) {
+      return res.status(400).json({
+        message: "New password cannot be same as old password",
+        status: false,
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+    await user.save();
+
+    return res.status(200).json({ message: "password Changed", status: true });
+  } catch (error) {
+    return res.status(500).json({ message: error.message, status: false });
+  }
+};
 
 module.exports = {
   registerUser,
@@ -174,4 +207,5 @@ module.exports = {
   logout,
   getUserDetails,
   updateUserDetails,
+  changePassword,
 };
