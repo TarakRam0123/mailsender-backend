@@ -97,7 +97,7 @@ const logout = async (req, res) => {
       secure: true,
       path: "/",
     });
-    res.json({ message: "Logged out" });
+    res.json({ message: "Logged out", status: true });
   } catch (error) {
     return res.status(500).json({ message: error.message, status: false });
   }
