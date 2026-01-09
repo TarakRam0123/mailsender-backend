@@ -205,7 +205,7 @@ exports.sendGoogleMail = async (req, res) => {
     );
 
     return res.json({
-      message: "Email sent via Gmail!",
+      message: `mail Sent to ${to}`,
       status: true,
     });
   } catch (error) {
